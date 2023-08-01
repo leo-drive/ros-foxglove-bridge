@@ -1,39 +1,98 @@
 <launch>
-  <arg name="port"                      default="8765" />
-  <arg name="address"                   default="0.0.0.0" />
-  <arg name="tls"                       default="false" />
-  <arg name="certfile"                  default="" />
-  <arg name="keyfile"                   default="" />
-  <arg name="topic_whitelist"           default="['.*']" />
-  <arg name="param_whitelist"           default="['.*']" />
-  <arg name="service_whitelist"         default="['.*']" />
-  <arg name="client_topic_whitelist"    default="['.*']" />
-  <arg name="min_qos_depth"             default="1" />
-  <arg name="max_qos_depth"             default="10" />
-  <arg name="num_threads"               default="0" />
-  <arg name="send_buffer_limit"         default="10000000" />
-  <arg name="use_sim_time"              default="false" />
-  <arg name="capabilities"              default="[clientPublish,parameters,parametersSubscribe,services,connectionGraph,assets]" />
-  <arg name="include_hidden"            default="false" />
-  <arg name="asset_uri_allowlist"       default="['package://(\\w+/?)+\\.(dae|stl|urdf|xacro)']" />  <!-- Needs double-escape -->
+  <arg name="port" default="8765" />
+  <arg name="address" default="127.0.0.1" />
+  <arg name="tls" default="false" />
+  <arg name="certfile" default="" />
+  <arg name="keyfile" default="" />
+  <arg name="topic_whitelist" default="[
+  /gps_coordinates,
+  /perception/object_recognition/objects,
+  /hmi/checkpoint_gnss_coordinate,
+  /hmi/goal_gnss_coordinate,
+  /ui/ui_process_manager_prime_node/ui_process_command,
+  /awapi/vehicle/put/velocity,
+  /autoware/state,
+  /api/autoware/get/emergency,
+  /system/emergency/hazard_status,
+  /awapi/autoware/get/status,
+  /sensing/lidar/concatenated/pointcloud,
+  /map/pointcloud_map,
+  /perception/obstacle_segmentation/pointcloud,
+  /perception/object_recognition/tracking/objects,
+  /perception/traffic_light_recognition/traffic_signals,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/stop_line,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/crosswalk,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/blind_spot,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/detection_area,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/intersection,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/merge_from_private,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/no_stopping_area,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/occlusion_spot,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/traffic_light,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/virtual_traffic_light,
+  /planning/scenario_planning/lane_driving/behavior_planning/behavior_velocity_planner/virtual_wall/run_out,
+  /planning/scenario_planning/lane_driving/motion_planning/obstacle_stop_planner/virtual_wall,
+  /planning/scenario_planning/lane_driving/motion_planning/surround_obstacle_checker/virtual_wall,
+  /planning/scenario_planning/lane_driving/motion_planning/obstacle_avoidance_planner/virtual_wall,
+  /planning/scenario_planning/lane_driving/motion_planning/obstacle_cruise_planner/virtual_wall,
+  /api/autoware/get/engage,
+  /map/vector_map_marker,
+  /awapi/vehicle/get/status,
+  /vehicle/status/velocity_status,
+  /api/autoware/get/velocity_limit,
+  /planning/scenario_planning/lane_driving/behavior_planning/path,
+  /planning/scenario_planning/trajectory,
+  /planning/mission_planning/echo_back_goal_pose,
+  /tf_static,
+  /tf,
+  /robot_description,
+  /lucid_vision/front_left_camera/camera_info,
+  /lucid_vision/rear_right_camera/image_compressed,
+  /lucid_vision/middle_left_camera/camera_info,
+  /lucid_vision/middle_right_camera/image_compressed,
+  /lucid_vision/rear_camera/image_compressed,
+  /lucid_vision/middle_right_camera/camera_info,
+  /lucid_vision/front_camera/camera_info,
+  /lucid_vision/front_camera/image_compressed,
+  /lucid_vision/front_right_camera/image_compressed,
+  /lucid_vision/middle_left_camera/image_compressed,
+  /lucid_vision/front_right_camera/camera_info,
+  /lucid_vision/rear_camera/camera_info,
+  /lucid_vision/front_left_camera/image_compressed,
+  /lucid_vision/rear_left_camera/camera_info,
+  /lucid_vision/rear_left_camera/image_compressed,
+  /lucid_vision/rear_right_camera/camera_info
+  ]" />
+  <arg name="param_whitelist" default="['']" />
+  <arg name="service_whitelist" default="[/api/autoware/set/engage,/api/autoware/set/emergency]" />
+  <arg name="client_topic_whitelist" default="[/gps_coordinates,/autoware/state]" />
+  <arg name="min_qos_depth" default="1" />
+  <arg name="max_qos_depth" default="100" />
+  <arg name="num_threads" default="4" />
+  <arg name="send_buffer_limit" default="50000000" />
+  <arg name="use_sim_time" default="false" />
+  <arg name="capabilities" default="[clientPublish,services,assets]" />
+  <arg name="include_hidden" default="false" />
+  <arg name="asset_uri_allowlist" default="['package://(\\w+/?)+\\.(glb|fbx|dae|stl|urdf|xacro)']" />
+  <!-- Needs double-escape -->
 
   <node pkg="foxglove_bridge" exec="foxglove_bridge">
-    <param name="port"                    value="$(var port)" />
-    <param name="address"                 value="$(var address)" />
-    <param name="tls"                     value="$(var tls)" />
-    <param name="certfile"                value="$(var certfile)" />
-    <param name="keyfile"                 value="$(var keyfile)" />
-    <param name="topic_whitelist"         value="$(var topic_whitelist)" />
-    <param name="service_whitelist"       value="$(var service_whitelist)" />
-    <param name="param_whitelist"         value="$(var param_whitelist)" />
-    <param name="client_topic_whitelist"  value="$(var client_topic_whitelist)" />
-    <param name="min_qos_depth"           value="$(var min_qos_depth)" />
-    <param name="max_qos_depth"           value="$(var max_qos_depth)" />
-    <param name="num_threads"             value="$(var num_threads)" />
-    <param name="send_buffer_limit"       value="$(var send_buffer_limit)" />
-    <param name="use_sim_time"            value="$(var use_sim_time)" />
-    <param name="capabilities"            value="$(var capabilities)" />
-    <param name="include_hidden"          value="$(var include_hidden)" />
-    <param name="asset_uri_allowlist"     value="$(var asset_uri_allowlist)" />
+    <param name="port" value="$(var port)" />
+    <param name="address" value="$(var address)" />
+    <param name="tls" value="$(var tls)" />
+    <param name="certfile" value="$(var certfile)" />
+    <param name="keyfile" value="$(var keyfile)" />
+    <param name="topic_whitelist" value="$(var topic_whitelist)" />
+    <param name="service_whitelist" value="$(var service_whitelist)" />
+    <param name="param_whitelist" value="$(var param_whitelist)" />
+    <param name="client_topic_whitelist" value="$(var client_topic_whitelist)" />
+    <param name="min_qos_depth" value="$(var min_qos_depth)" />
+    <param name="max_qos_depth" value="$(var max_qos_depth)" />
+    <param name="num_threads" value="$(var num_threads)" />
+    <param name="send_buffer_limit" value="$(var send_buffer_limit)" />
+    <param name="use_sim_time" value="$(var use_sim_time)" />
+    <param name="capabilities" value="$(var capabilities)" />
+    <param name="include_hidden" value="$(var include_hidden)" />
+    <param name="asset_uri_allowlist" value="$(var asset_uri_allowlist)" />
   </node>
 </launch>
