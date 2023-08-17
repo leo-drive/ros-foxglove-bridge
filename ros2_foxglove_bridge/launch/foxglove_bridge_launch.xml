@@ -65,7 +65,7 @@
   ]" />
   <arg name="param_whitelist" default="['']" />
   <arg name="service_whitelist" default="[/api/autoware/set/engage,/api/autoware/set/emergency]" />
-  <arg name="client_topic_whitelist" default="[/gps_coordinates,/autoware/state]" />
+  <arg name="client_topic_whitelist" default="[/gps_coordinates,/autoware/state,/planning/mission_planning/goal,/initialpose]" />
   <arg name="min_qos_depth" default="1" />
   <arg name="max_qos_depth" default="100" />
   <arg name="num_threads" default="4" />
