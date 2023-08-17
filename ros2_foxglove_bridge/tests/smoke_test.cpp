@@ -166,6 +166,7 @@ TEST(SmokeTest, testSubscription) {
 
   auto node = rclcpp::Node::make_shared("tester");
   rclcpp::QoS qos = rclcpp::QoS{rclcpp::KeepLast(1lu)};
+  qos.reliable();
   qos.transient_local();
   auto pub = node->create_publisher<std_msgs::msg::String>(topic_name, qos);
   pub->publish(rosMsg);
@@ -202,6 +203,7 @@ TEST(SmokeTest, testSubscriptionParallel) {
 
   auto node = rclcpp::Node::make_shared("tester");
   rclcpp::QoS qos = rclcpp::QoS{rclcpp::KeepLast(1lu)};
+  qos.reliable();
   qos.transient_local();
   auto pub = node->create_publisher<std_msgs::msg::String>(topic_name, qos);
   pub->publish(rosMsg);
@@ -258,12 +260,17 @@ TEST(SmokeTest, testPublishing) {
   executor.add_node(node);
 
   // Set up the client, advertise and publish the binary message
-  foxglove::Client<websocketpp::config::asio_client> wsClient;
-  ASSERT_EQ(std::future_status::ready, wsClient.connect(URI).wait_for(DEFAULT_TIMEOUT));
-  wsClient.advertise({advertisement});
-  std::this_thread::sleep_for(ONE_SECOND);
-  wsClient.publish(advertisement.channelId, HELLO_WORLD_BINARY, sizeof(HELLO_WORLD_BINARY));
-  wsClient.unadvertise({advertisement.channelId});
+  auto client = std::make_shared<foxglove::Client<websocketpp::config::asio_client>>();
+  ASSERT_EQ(std::future_status::ready, client->connect(URI).wait_for(ONE_SECOND));
+  client->advertise({advertisement});
+
+  // Wait until the advertisement got advertised as channel by the server
+  auto channelFuture = foxglove::waitForChannel(client, advertisement.topic);
+  ASSERT_EQ(std::future_status::ready, channelFuture.wait_for(ONE_SECOND));
+
+  // Publish the message and unadvertise again
+  client->publish(advertisement.channelId, HELLO_WORLD_BINARY, sizeof(HELLO_WORLD_BINARY));
+  client->unadvertise({advertisement.channelId});
 
   // Ensure that we have received the correct message via our ROS subscriber
   const auto ret = executor.spin_until_future_complete(msgFuture, ONE_SECOND);
@@ -290,12 +297,17 @@ TEST_F(ExistingPublisherTest, testPublishingWithExistingPublisher) {
   executor.add_node(node);
 
   // Set up the client, advertise and publish the binary message
-  foxglove::Client<websocketpp::config::asio_client> wsClient;
-  ASSERT_EQ(std::future_status::ready, wsClient.connect(URI).wait_for(DEFAULT_TIMEOUT));
-  wsClient.advertise({advertisement});
-  std::this_thread::sleep_for(ONE_SECOND);
-  wsClient.publish(advertisement.channelId, HELLO_WORLD_BINARY, sizeof(HELLO_WORLD_BINARY));
-  wsClient.unadvertise({advertisement.channelId});
+  auto client = std::make_shared<foxglove::Client<websocketpp::config::asio_client>>();
+  ASSERT_EQ(std::future_status::ready, client->connect(URI).wait_for(ONE_SECOND));
+  client->advertise({advertisement});
+
+  // Wait until the advertisement got advertised as channel by the server
+  auto channelFuture = foxglove::waitForChannel(client, advertisement.topic);
+  ASSERT_EQ(std::future_status::ready, channelFuture.wait_for(ONE_SECOND));
+
+  // Publish the message and unadvertise again
+  client->publish(advertisement.channelId, HELLO_WORLD_BINARY, sizeof(HELLO_WORLD_BINARY));
+  client->unadvertise({advertisement.channelId});
 
   // Ensure that we have received the correct message via our ROS subscriber
   const auto ret = executor.spin_until_future_complete(msgFuture, ONE_SECOND);
@@ -484,9 +496,9 @@ TEST_F(ServiceTest, testCallServiceParallel) {
 
   auto serviceFuture = foxglove::waitForService(*clients.begin(), SERVICE_NAME);
   for (auto client : clients) {
-    ASSERT_EQ(std::future_status::ready, client->connect(URI).wait_for(std::chrono::seconds(5)));
+    ASSERT_EQ(std::future_status::ready, client->connect(URI).wait_for(ONE_SECOND));
   }
-  ASSERT_EQ(std::future_status::ready, serviceFuture.wait_for(std::chrono::seconds(5)));
+  ASSERT_EQ(std::future_status::ready, serviceFuture.wait_for(DEFAULT_TIMEOUT));
   const foxglove::Service service = serviceFuture.get();
 
   std_srvs::srv::SetBool::Request requestMsg;
@@ -508,7 +520,7 @@ TEST_F(ServiceTest, testCallServiceParallel) {
   }
 
   for (auto& future : futures) {
-    ASSERT_EQ(std::future_status::ready, future.wait_for(std::chrono::seconds(5)));
+    ASSERT_EQ(std::future_status::ready, future.wait_for(DEFAULT_TIMEOUT));
     foxglove::ServiceResponse response;
     EXPECT_NO_THROW(response = future.get());
     EXPECT_EQ(response.serviceId, request.serviceId);
@@ -558,7 +570,7 @@ TEST(SmokeTest, receiveMessagesOfMultipleTransientLocalPublishers) {
 
   // Set up binary message handler to resolve the promise when all nPub message have been received
   std::promise<void> promise;
-  size_t nReceivedMessages = 0;
+  std::atomic<size_t> nReceivedMessages = 0;
   client->setBinaryMessageHandler([&promise, &nReceivedMessages](const uint8_t*, size_t) {
     if (++nReceivedMessages == nPubs) {
       promise.set_value();
@@ -567,8 +579,12 @@ TEST(SmokeTest, receiveMessagesOfMultipleTransientLocalPublishers) {
 
   // Subscribe to the channel and confirm that the promise resolves
   client->subscribe({{subscriptionId, channel.id}});
-  ASSERT_EQ(std::future_status::ready, promise.get_future().wait_for(ONE_SECOND));
+  EXPECT_EQ(std::future_status::ready, promise.get_future().wait_for(DEFAULT_TIMEOUT));
+  EXPECT_EQ(nReceivedMessages, nPubs);
+  client->unsubscribe({subscriptionId});
 
+  pubs.clear();
+  executor.remove_node(node);
   executor.cancel();
   spinnerThread.join();
 }
